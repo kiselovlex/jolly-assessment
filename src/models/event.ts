@@ -6,7 +6,7 @@ export interface Event {
   id: string;
   profileId: string;
   type: EventType;
-  timestamp: Date; // Parsed from createdAt or updatedAt
+  timestamp: Date;
   metadata: Partial<{
     clockInTime: Date | null;
     clockOutTime: Date | null;
@@ -16,7 +16,8 @@ export interface Event {
     documentation: string | null;
     createdAt: Date | null;
     updatedAt: Date | null;
-  }> & Record<string, any>; // Allow additional fields
+  }> &
+    Record<string, any>;
 }
 
 export const EventSchema = z.object({
