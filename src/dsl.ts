@@ -19,7 +19,6 @@ export function lt<K extends NumberOrDateKey>(path: K, value: NonNullable<Metada
 }
 
 export function contains<K extends Path>(path: K, value: string): Condition {
-  if (typeof ({} as Metadata)[path] !== 'string') throw new Error('Contains only for string paths');
   return { type: 'contains', path, value };
 }
 
