@@ -61,7 +61,8 @@ app.post('/events', (req, res) => {
   const parsed = EventSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error });
   const event: Event = parsed.data;
-  const employee = employees.find((e) => e.id === event.metadata.employee_id);
+  const employeeId = event.employeeId;
+  const employee = employees.find((e) => e.id === employeeId);
   if (!employee) return res.status(404).json({ error: 'Employee not found' });
   const matchingRules = rules.filter((r) => r.eventType === event.type);
   const awarded: string[] = [];
@@ -84,6 +85,10 @@ app.post('/events', (req, res) => {
     }
   }
   res.json({ message: 'Event processed', awardedRules: awarded });
+});
+
+app.get('/grants', (req, res) => {
+  res.json(grants);
 });
 
 const PORT = process.env.PORT || 3000;

@@ -4,7 +4,7 @@ export type EventType = 'visit';
 
 export interface Event {
   id: string;
-  profileId: string;
+  employeeId: string;
   type: EventType;
   timestamp: Date;
   metadata: Partial<{
@@ -22,8 +22,8 @@ export interface Event {
 
 export const EventSchema = z.object({
   id: z.string(),
-  profileId: z.string(),
+  employeeId: z.string(),
   type: z.union([z.literal('visit')]),
-  timestamp: z.date(),
+  timestamp: z.coerce.date(),
   metadata: z.record(z.string(), z.any()),
 });
