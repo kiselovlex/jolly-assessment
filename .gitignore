@@ -1,0 +1,15 @@
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm/yarn caches
+.npm
+.yarn/cache
