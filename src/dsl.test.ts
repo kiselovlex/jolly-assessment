@@ -1,5 +1,9 @@
-import { eq, gt, lt, contains, and, or, evaluate } from './dsl';
+import { eq, gt, lt, contains, and, or, evaluate, llmJudge } from './dsl';
 import { Event } from './models/event';
+
+jest.mock('ai', () => ({
+  generateObject: jest.fn(),
+}));
 
 describe('DSL builders', () => {
   test('eq creates correct condition', () => {
@@ -29,8 +33,17 @@ describe('DSL builders', () => {
     const cond2 = gt('p2', 2);
     expect(or(cond1, cond2)).toEqual({ type: 'or', conditions: [cond1, cond2] });
   });
+
+  test('llmJudge creates correct condition', () => {
+    expect(llmJudge('path', 'Is this helpful?')).toEqual({
+      type: 'llm_judge',
+      path: 'path',
+      prompt: 'Is this helpful?',
+    });
+  });
 });
 
+// Make all evaluate tests async
 describe('evaluate', () => {
   const mockEvent: Event = {
     id: '1',
@@ -45,69 +58,74 @@ describe('evaluate', () => {
     },
   };
 
-  test('eq true', () => {
-    expect(evaluate(eq('str', 'hello world'), mockEvent)).toBe(true);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  test('eq false', () => {
-    expect(evaluate(eq('str', 'no'), mockEvent)).toBe(false);
+  test('eq true', async () => {
+    await expect(evaluate(eq('str', 'hello world'), mockEvent)).resolves.toBe(true);
   });
 
-  test('gt number true', () => {
-    expect(evaluate(gt('num', 5), mockEvent)).toBe(true);
+  test('eq false', async () => {
+    await expect(evaluate(eq('str', 'no'), mockEvent)).resolves.toBe(false);
   });
 
-  test('gt number false', () => {
-    expect(evaluate(gt('num', 15), mockEvent)).toBe(false);
+  test('gt number true', async () => {
+    await expect(evaluate(gt('num', 5), mockEvent)).resolves.toBe(true);
   });
 
-  test('gt date true', () => {
-    expect(evaluate(gt('date', new Date('2022-01-01')), mockEvent)).toBe(true);
+  test('gt number false', async () => {
+    await expect(evaluate(gt('num', 15), mockEvent)).resolves.toBe(false);
   });
 
-  test('gt date false', () => {
-    expect(evaluate(gt('date', new Date('2024-01-01')), mockEvent)).toBe(false);
+  test('gt date true', async () => {
+    await expect(evaluate(gt('date', new Date('2022-01-01')), mockEvent)).resolves.toBe(true);
   });
 
-  test('gt with null false', () => {
-    expect(evaluate(gt('nullVal', 0), mockEvent)).toBe(false);
+  test('gt date false', async () => {
+    await expect(evaluate(gt('date', new Date('2024-01-01')), mockEvent)).resolves.toBe(false);
   });
 
-  test('lt similar tests', () => {
+  test('gt with null false', async () => {
+    await expect(evaluate(gt('nullVal', 0), mockEvent)).resolves.toBe(false);
+  });
+
+  test('lt similar tests', async () => {
     // Add similar for lt
-    expect(evaluate(lt('num', 15), mockEvent)).toBe(true);
-    expect(evaluate(lt('num', 5), mockEvent)).toBe(false);
+    await expect(evaluate(lt('num', 15), mockEvent)).resolves.toBe(true);
+    await expect(evaluate(lt('num', 5), mockEvent)).resolves.toBe(false);
   });
 
-  test('contains true', () => {
-    expect(evaluate(contains('str', 'hello'), mockEvent)).toBe(true);
+  test('contains true', async () => {
+    await expect(evaluate(contains('str', 'hello'), mockEvent)).resolves.toBe(true);
   });
 
-  test('contains false', () => {
-    expect(evaluate(contains('str', 'bye'), mockEvent)).toBe(false);
+  test('contains false', async () => {
+    await expect(evaluate(contains('str', 'bye'), mockEvent)).resolves.toBe(false);
   });
 
-  test('and true', () => {
-    expect(evaluate(and(eq('str', 'hello world'), gt('num', 5)), mockEvent)).toBe(true);
-  });
-
-  test('and false', () => {
-    expect(evaluate(and(eq('str', 'hello world'), gt('num', 15)), mockEvent)).toBe(false);
-  });
-
-  test('or true', () => {
-    expect(evaluate(or(eq('str', 'no'), gt('num', 5)), mockEvent)).toBe(true);
-  });
-
-  test('or false', () => {
-    expect(evaluate(or(eq('str', 'no'), gt('num', 15)), mockEvent)).toBe(false);
-  });
-
-  test('nested conditions', () => {
-    const complex = and(
-      or(eq('str', 'hello world'), lt('num', 0)),
-      gt('date', new Date('2022-01-01'))
+  test('and true', async () => {
+    await expect(evaluate(and(eq('str', 'hello world'), gt('num', 5)), mockEvent)).resolves.toBe(
+      true
     );
-    expect(evaluate(complex, mockEvent)).toBe(true);
+  });
+
+  test('and false', async () => {
+    await expect(evaluate(and(eq('str', 'hello world'), gt('num', 15)), mockEvent)).resolves.toBe(
+      false
+    );
+  });
+
+  test('or true', async () => {
+    await expect(evaluate(or(eq('str', 'no'), gt('num', 5)), mockEvent)).resolves.toBe(true);
+  });
+
+  test('or false', async () => {
+    await expect(evaluate(or(eq('str', 'no'), gt('num', 15)), mockEvent)).resolves.toBe(false);
+  });
+
+  test('nested conditions', async () => {
+    const nested = and(or(eq('str', 'hello world'), gt('num', 20)), lt('num', 15));
+    await expect(evaluate(nested, mockEvent)).resolves.toBe(true);
   });
 });

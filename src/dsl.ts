@@ -1,5 +1,8 @@
 import { Condition } from './models/condition';
 import { Event } from './models/event';
+import { openai } from '@ai-sdk/openai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 type Metadata = Event['metadata'];
 type Path = keyof Metadata;
@@ -30,7 +33,11 @@ export function or(...conditions: Condition[]): Condition {
   return { type: 'or', conditions };
 }
 
-export function evaluate(condition: Condition, event: Event): boolean {
+export function llmJudge<K extends Path>(path: K, prompt: string): Condition {
+  return { type: 'llm_judge', path, prompt };
+}
+
+export async function evaluate(condition: Condition, event: Event): Promise<boolean> {
   const getValue = <K extends Path>(path: K): Metadata[K] => event.metadata[path];
 
   switch (condition.type) {
@@ -57,9 +64,21 @@ export function evaluate(condition: Condition, event: Event): boolean {
       return typeof val === 'string' && val.includes(condition.value);
     }
     case 'and':
-      return condition.conditions.every((c) => evaluate(c, event));
+      return (await Promise.all(condition.conditions.map((c) => evaluate(c, event)))).every(
+        Boolean
+      );
     case 'or':
-      return condition.conditions.some((c) => evaluate(c, event));
+      return (await Promise.all(condition.conditions.map((c) => evaluate(c, event)))).some(Boolean);
+    case 'llm_judge': {
+      const text = getValue(condition.path);
+      if (typeof text !== 'string') return false;
+      const { object } = await generateObject<{ isSatisfied: boolean }>({
+        model: openai('gpt-4o-mini'),
+        schema: z.object({ isSatisfied: z.boolean() }),
+        prompt: `${condition.prompt} Text: ${text}`,
+      });
+      return object.isSatisfied;
+    }
     default:
       return false;
   }

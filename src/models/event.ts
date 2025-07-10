@@ -17,6 +17,8 @@ export interface Event {
     createdAt: Date | null;
     updatedAt: Date | null;
   }> &
+    // TODO: Consider fixing if time allows
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Record<string, any>;
 }
 

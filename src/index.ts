@@ -13,62 +13,96 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-app.get('/rules', (req, res) => {
+app.get('/rules', (_, res) => {
   res.json(rules);
 });
 
 app.post('/rules', (req, res) => {
   const parsed = RuleSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error });
+
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
   const newRule: Rule = { ...parsed.data, id: crypto.randomUUID(), eventType: 'visit' };
   rules.push(newRule);
+
   res.status(201).json(newRule);
 });
 
 app.get('/rules/:id', (req, res) => {
   const rule = rules.find((r) => r.id === req.params.id);
-  if (!rule) return res.status(404).json({ error: 'Rule not found' });
+
+  if (!rule) {
+    return res.status(404).json({ error: 'Rule not found' });
+  }
+
   res.json(rule);
 });
 
 app.put('/rules/:id', (req, res) => {
   const index = rules.findIndex((r) => r.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Rule not found' });
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Rule not found' });
+  }
+
   const parsed = RuleSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error });
+
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
   rules[index] = { ...parsed.data, id: req.params.id, eventType: 'visit' };
+
   res.json(rules[index]);
 });
 
 app.delete('/rules/:id', (req, res) => {
   const index = rules.findIndex((r) => r.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Rule not found' });
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Rule not found' });
+  }
+
   rules.splice(index, 1);
   res.status(204).send();
 });
 
-app.get('/employees', (req, res) => {
+app.get('/employees', (_, res) => {
   res.json(employees.map(({ id, name, points }) => ({ id, name, points })));
 });
 
 app.get('/employees/:id', (req, res) => {
   const employee = employees.find((e) => e.id === req.params.id);
+
   if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
   res.json({ id: employee.id, name: employee.name, points: employee.points });
 });
 
-app.post('/events', (req, res) => {
+app.post('/events', async (req, res) => {
   const parsed = EventSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error });
+
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
   const event: Event = parsed.data;
   const employeeId = event.employeeId;
   const employee = employees.find((e) => e.id === employeeId);
-  if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
+  if (!employee) {
+    return res.status(404).json({ error: 'Employee not found' });
+  }
+
   const matchingRules = rules.filter((r) => r.eventType === event.type);
   const awarded: string[] = [];
+
   for (const rule of matchingRules) {
-    if (evaluate(rule.condition, event)) {
+    if (await evaluate(rule.condition, event)) {
       const existingGrant = grants.find((g) => g.ruleId === rule.id && g.eventId === event.id);
+
       if (!existingGrant) {
         const grant: Grant = {
           id: crypto.randomUUID(),
@@ -87,7 +121,7 @@ app.post('/events', (req, res) => {
   res.json({ message: 'Event processed', awardedRules: awarded });
 });
 
-app.get('/grants', (req, res) => {
+app.get('/grants', (_, res) => {
   res.json(grants);
 });
 
